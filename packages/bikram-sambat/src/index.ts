@@ -10,44 +10,44 @@ import { parseAdString } from './utilities/parse-ad-string';
 interface BikramSambatProps {
   bsYear: number;
   bsMonth: number;
-  bsDay: number;
+  bsDate: number;
   weekDay: 0 | 1 | 2 | 3 | 4 | 5 | 6;
-  adDate: Date;
+  ad: Date;
   bsMonthName: string;
 }
 
-export type UnitType = 'day' | 'month' | 'year' | 'week';
+export type UnitType = 'day' | 'date' | 'month' | 'year' | 'week';
 
-export type StarOfEndOfType = Exclude<UnitType, 'day' | 'week'>;
+export type SetUnitType = Exclude<UnitType, 'week'>;
+
+export type StarOfEndOfType = Exclude<UnitType, 'date' | 'day' | 'week'>;
 
 export type ManipulateType = 'month' | 'year' | 'day';
 
 export default class BikramSambat implements BikramSambatProps {
   bsYear!: number;
   bsMonth!: number;
-  bsDay!: number;
+  bsDate!: number;
   weekDay!: 0 | 1 | 2 | 3 | 4 | 5 | 6;
-  adDate!: Date;
+  ad!: Date;
   bsMonthName!: string;
 
   private constructor(props: BikramSambatProps) {
     Object.assign(this, props);
   }
 
-  static parse(date: string) {
-    if (!(typeof date === 'string'))
+  static parse(toParse: string) {
+    if (!(typeof toParse === 'string'))
       throw new Error('This function only accepts string.');
 
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date))
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(toParse))
       throw new Error(
-        `Invalid date format: "${date}". Expected format is YYYY-MM-DD.`
+        `Invalid date format: "${toParse}". Expected format is YYYY-MM-DD.`
       );
 
-    const [year, month, day] = date.split('-').map((num) => parseInt(num)) as [
-      number,
-      number,
-      number,
-    ];
+    const [year, month, date] = toParse
+      .split('-')
+      .map((num) => parseInt(num)) as [number, number, number];
 
     if (year < 1970 || year > 2111)
       throw new Error('Year should be between 1970 and 2111.');
@@ -59,15 +59,15 @@ export default class BikramSambat implements BikramSambatProps {
 
     const currentMonthIndex = month - 1;
 
-    const englishDate = adDateFromBS(year, month, day);
+    const englishDate = adDateFromBS(year, month, date);
 
-    const bikramSambatDate = {
+    const bikramSambatDate: BikramSambatProps = {
       weekDay: englishDate.day(),
       bsYear: year,
       bsMonth: month,
-      bsDay: day,
+      bsDate: date,
       bsMonthName: months[currentMonthIndex]!.nepName,
-      adDate: englishDate.toDate(),
+      ad: englishDate.toDate(),
     };
 
     return new BikramSambat(bikramSambatDate);
@@ -120,11 +120,11 @@ export default class BikramSambat implements BikramSambatProps {
       weekDay: englishDateDayjs.day(),
       bsYear: matchingCalendarPeriod.nepYear,
       bsMonth: currentBsMonth.monthNumber,
-      bsDay: previousBsMonth
+      bsDate: previousBsMonth
         ? daysSinceStartOfPeriod - previousBsMonth.cumulativeDays
         : daysSinceStartOfPeriod,
       bsMonthName: currentBsMonth.monthName,
-      adDate: date,
+      ad: date,
     };
 
     return new BikramSambat(bikramSambatDate);
@@ -149,7 +149,7 @@ export default class BikramSambat implements BikramSambatProps {
   }
 
   toString() {
-    return `${this.bsMonthName} ${this.bsDay} ${this.bsYear}`;
+    return `${this.bsMonthName} ${this.bsDate} ${this.bsYear}`;
   }
 
   static now() {
@@ -158,7 +158,7 @@ export default class BikramSambat implements BikramSambatProps {
 
   add(value: number, unit: ManipulateType = 'day') {
     const newDate = BikramSambat.fromAD(
-      dayjs(this.adDate).add(value, unit).toDate()
+      dayjs(this.ad).add(value, unit).toDate()
     );
 
     return newDate;
@@ -170,16 +170,16 @@ export default class BikramSambat implements BikramSambatProps {
 
   startOf(unit: StarOfEndOfType) {
     const clone = this.clone();
-    if (unit === 'month') clone.bsDay = 1;
+    if (unit === 'month') clone.bsDate = 1;
     if (unit === 'year') {
-      clone.bsDay = 1;
+      clone.bsDate = 1;
       clone.bsMonth = 1;
       clone.bsMonthName = months.at(0)!.nepName;
     }
 
-    const newAdDate = adDateFromBS(clone.bsYear, clone.bsMonth, clone.bsDay);
+    const newAdDate = adDateFromBS(clone.bsYear, clone.bsMonth, clone.bsDate);
 
-    clone.adDate = newAdDate.toDate();
+    clone.ad = newAdDate.toDate();
     clone.weekDay = newAdDate.day();
 
     return clone;
@@ -188,16 +188,16 @@ export default class BikramSambat implements BikramSambatProps {
   endOf(unit: StarOfEndOfType) {
     const clone = this.clone();
     if (unit === 'month') {
-      clone.bsDay = getBSMonthTotalDays(clone.bsMonth, clone.bsYear);
+      clone.bsDate = getBSMonthTotalDays(clone.bsMonth, clone.bsYear);
     } else if (unit === 'year') {
       clone.bsMonth = 12;
       clone.bsMonthName = months.at(-1)!.nepName;
-      clone.bsDay = getBSMonthTotalDays(clone.bsMonth, clone.bsYear);
+      clone.bsDate = getBSMonthTotalDays(clone.bsMonth, clone.bsYear);
     }
 
-    const newAdDate = adDateFromBS(clone.bsYear, clone.bsMonth, clone.bsDay);
+    const newAdDate = adDateFromBS(clone.bsYear, clone.bsMonth, clone.bsDate);
 
-    clone.adDate = newAdDate.toDate();
+    clone.ad = newAdDate.toDate();
     clone.weekDay = newAdDate.day();
 
     return clone;
@@ -217,17 +217,17 @@ export default class BikramSambat implements BikramSambatProps {
         case 'YYYY':
           return this.bsYear.toString();
         case 'DD':
-          return this.bsDay.toString().padStart(2, '0');
+          return this.bsDate.toString().padStart(2, '0');
         case 'D':
-          return this.bsDay.toString();
+          return this.bsDate.toString();
         case 'dddd':
-          return dayjs(this.adDate).format('dddd');
+          return dayjs(this.ad).format('dddd');
         case 'ddd':
-          return dayjs(this.adDate).format('ddd');
+          return dayjs(this.ad).format('ddd');
         case 'dd':
-          return dayjs(this.adDate).format('dd');
+          return dayjs(this.ad).format('dd');
         case 'd':
-          return dayjs(this.adDate).format('d');
+          return dayjs(this.ad).format('d');
       }
       return null;
     };
@@ -240,8 +240,8 @@ export default class BikramSambat implements BikramSambatProps {
 
   clone() {
     return new BikramSambat({
-      adDate: new Date(this.adDate),
-      bsDay: this.bsDay,
+      ad: new Date(this.ad),
+      bsDate: this.bsDate,
       bsMonth: this.bsMonth,
       bsMonthName: this.bsMonthName,
       bsYear: this.bsYear,
@@ -250,23 +250,72 @@ export default class BikramSambat implements BikramSambatProps {
   }
 
   isSame(date: BikramSambat | Date, unit: UnitType = 'day') {
-    if (date instanceof BikramSambat) date = date.adDate;
+    if (date instanceof BikramSambat) date = date.ad;
     else if (!(date instanceof Date)) throw new Error('Invalid compare value');
 
-    return dayjs(this.adDate).isSame(date, unit);
+    return dayjs(this.ad).isSame(date, unit);
   }
 
   isBefore(date: BikramSambat | Date, unit: UnitType = 'day') {
-    if (date instanceof BikramSambat) date = date.adDate;
+    if (date instanceof BikramSambat) date = date.ad;
     else if (!(date instanceof Date)) throw new Error('Invalid compare value');
 
-    return dayjs(this.adDate).isBefore(date, unit);
+    return dayjs(this.ad).isBefore(date, unit);
   }
 
   isAfter(date: BikramSambat | Date, unit: UnitType = 'day') {
-    if (date instanceof BikramSambat) date = date.adDate;
+    if (date instanceof BikramSambat) date = date.ad;
     else if (!(date instanceof Date)) throw new Error('Invalid compare value');
 
-    return dayjs(this.adDate).isAfter(date, unit);
+    return dayjs(this.ad).isAfter(date, unit);
+  }
+
+  get(unit: UnitType) {
+    switch (unit) {
+      case 'date':
+        return this.bsDate;
+      case 'month':
+        return this.bsMonth;
+      case 'day':
+        return this.weekDay;
+      case 'year':
+        return this.bsYear;
+    }
+  }
+
+  set(unit: SetUnitType, value: number) {
+    if (typeof value !== 'number')
+      throw new Error('Value must be a type of number.');
+    return BikramSambat.fromAD(dayjs(this.ad).set(unit, value).toDate());
+  }
+
+  date(value?: number) {
+    if (typeof value !== 'number')
+      throw new Error('Value must be a type of number.');
+    if (!value) return this.bsDate;
+
+    return this.add(value, 'day');
+  }
+
+  month(value?: number) {
+    if (typeof value !== 'number')
+      throw new Error('Value must be a type of number.');
+    if (!value) return this.bsMonth;
+
+    return this.add(value, 'month');
+  }
+
+  year(value?: number) {
+    if (typeof value !== 'number')
+      throw new Error('Value must be a type of number.');
+    if (!value) return this.year;
+
+    return this.add(value, 'year');
+  }
+
+  day(value?: number) {
+    if (typeof value !== 'number')
+      throw new Error('Value must be a type of number.');
+    return this.date(value);
   }
 }
